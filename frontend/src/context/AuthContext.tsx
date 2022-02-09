@@ -32,6 +32,19 @@ interface AuthProviderProps {
 
 const AuthContext = createContext({} as AuthContextData);
 
+export function signOut(): void {
+  setCookie(undefined, 'nextauth.token', '', {
+    maxAge: 0,
+    path: '/',
+  });
+  setCookie(undefined, 'nextauth.refreshToken', '', {
+    maxAge: 0,
+    path: '/',
+  });
+
+  Router.push('/');
+}
+
 export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
   const [user, setUser] = useState<User>();
   const isAuthenticated = !!user;
@@ -40,9 +53,14 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
     const { 'nextauth.token': token } = parseCookies();
 
     if (token) {
-      api.get('/me').then(({ data: { email, permissions, roles } }) => {
-        setUser({ email, permissions, roles });
-      });
+      api
+        .get('/me')
+        .then(({ data: { email, permissions, roles } }) => {
+          setUser({ email, permissions, roles });
+        })
+        .catch(() => {
+          signOut();
+        });
     }
   }, []);
 
