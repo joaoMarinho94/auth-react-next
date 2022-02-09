@@ -2,6 +2,8 @@ import axios, { AxiosError } from 'axios';
 import { parseCookies, setCookie } from 'nookies';
 
 let cookies = parseCookies();
+let isRefresing = false;
+let failedRequestsQueue = [];
 
 export const api = axios.create({
   baseURL: 'http://localhost:3333',
@@ -18,25 +20,53 @@ api.interceptors.response.use(
         cookies = parseCookies();
 
         const { 'nextauth.refreshToken': refreshToken } = cookies;
+        const originalConfig = error.config;
 
-        api
-          .post('/refresh', { refreshToken })
-          .then(({ data: { token, refreshToken: newRefreshToken } }) => {
-            setCookie(undefined, 'nextauth.token', token, {
-              maxAge: 60 * 60 * 24,
-              path: '/',
+        if (!isRefresing) {
+          isRefresing = true;
+
+          api
+            .post('/refresh', { refreshToken })
+            .then(({ data: { token, refreshToken: newRefreshToken } }) => {
+              setCookie(undefined, 'nextauth.token', token, {
+                maxAge: 60 * 60 * 24,
+                path: '/',
+              });
+
+              setCookie(undefined, 'nextauth.refreshToken', newRefreshToken, {
+                maxAge: 60 * 60 * 24,
+                path: '/',
+              });
+
+              api.defaults.headers.Authorization = `Bearer ${token}`;
+
+              failedRequestsQueue.forEach(request => request.onSuccess(token));
+              failedRequestsQueue = [];
+            })
+            .catch(err => {
+              failedRequestsQueue.forEach(request => request.onFailure(err));
+              failedRequestsQueue = [];
+            })
+            .finally(() => {
+              isRefresing = false;
             });
+        }
 
-            setCookie(undefined, 'nextauth.refreshToken', newRefreshToken, {
-              maxAge: 60 * 60 * 24,
-              path: '/',
-            });
+        return new Promise((resolve, reject) => {
+          failedRequestsQueue.push({
+            onSuccess: (token: string) => {
+              originalConfig.headers.Authorization = `Bearer ${token}`;
 
-            api.defaults.headers.Authorization = `Bearer ${token}`;
+              resolve(api(originalConfig));
+            },
+            onFailure: (err: AxiosError) => {
+              reject(err);
+            },
           });
-      } else {
-        //
+        });
       }
+
+      //
     }
   }
 );
