@@ -5,8 +5,8 @@ import styles from '../styles/home.module.scss';
 export default function Home(): JSX.Element {
   const { signIn } = useAuthContext();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('diego@rocketseat.team');
+  const [password, setPassword] = useState('123456');
 
   async function handleSubmit(e: FormEvent): Promise<void> {
     e.preventDefault();
