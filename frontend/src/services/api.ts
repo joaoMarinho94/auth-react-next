@@ -53,7 +53,7 @@ export function setupApiClient(ctx = undefined): AxiosInstance {
                 failedRequestsQueue.forEach(request => request.onFailure(err));
                 failedRequestsQueue = [];
 
-                if (process.env.browser) signOut();
+                if (process.browser) signOut();
               })
               .finally(() => {
                 isRefresing = false;
@@ -74,7 +74,7 @@ export function setupApiClient(ctx = undefined): AxiosInstance {
           });
         }
 
-        if (process.env.browser) signOut();
+        if (process.browser) signOut();
         else return Promise.reject(new AuthTokenError());
       }
 
